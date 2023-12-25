@@ -1,11 +1,10 @@
 # Welcome to TaskSheet Manager #
 This TaskSheet Manager is a simple task management application using your spreadsheet as the database and provide an interface to log new task.
 
-## Screens ##
-Login with OAuth
-Log new task (categorize by "To do" and "Content" type): Top 2 buttons are both save buttons -  each button saves to it's respective column (filtering how the input is saved).
-
-See the list of task: Go to sheet let's me see the sheet of saved, categorized inputs.
+## //TODO Screens ##
+* Login with OAuth.
+* Log new task (categorize by "To do" and "Content" type): Top 2 buttons are both save buttons -  each button saves to it's respective column (filtering how the input is saved).
+* See the list of task: Go to sheet let's me see the sheet of saved, categorized inputs.
 
 ## Use Cases ##
 ### Use Case 1: User Authentication with Google ###
