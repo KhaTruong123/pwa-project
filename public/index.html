@@ -1,15 +1,15 @@
-<link rel="stylesheet" href="style.css">
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskSheet Manager</title>
+    <link rel="stylesheet" href="style.css"> <!-- Link to CSS file -->
+    <link rel="manifest" href="manifest.json"> <!-- Link to manifest file -->
 </head>
 <body>
     <h1>TaskSheet Manager</h1>
-
+    <script src="main.js"></script>
     <!-- Task input form -->
     <form id="taskForm">
         <input type="text" id="taskInput" placeholder="Enter a task" required />
@@ -49,9 +49,33 @@
 
         // Function to view tasks
         function viewTasks() {
-            // Redirect to the spreadsheet view
-            window.open('http://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID', '_blank');
+            // Check if the spreadsheetId is stored in the session/localStorage
+            const spreadsheetId = sessionStorage.getItem('spreadsheetId') || localStorage.getItem('spreadsheetId');
+            console.log("spreadsheet exist: ", spreadsheetId);
+            if (spreadsheetId) {
+            // If it exists, open the spreadsheet
+            window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
+        } else {
+            // If not, request the backend to create a new one
+            fetch('/view-tasks', {
+                method: 'POST',
+                // Additional headers and body if needed for session/user identification
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.spreadsheetId) {
+                    // Save the spreadsheet ID and open it
+                    sessionStorage.setItem('spreadsheetId', data.spreadsheetId);
+                    localStorage.setItem('spreadsheetId', data.spreadsheetId); // Persist across sessions
+                    window.open(`https://docs.google.com/spreadsheets/d/${data.spreadsheetId}`, '_blank');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating/viewing spreadsheet:', error);
+            });
         }
+}
+
     </script>
 </body>
 </html>
