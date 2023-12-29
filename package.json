@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +15,7 @@
     "express-session": "^1.17.3",
     "g": "^2.0.1",
     "googleapis": "^129.0.0",
+    "nodemon": "^3.0.2",
     "npm": "^10.2.5"
   }
 }
