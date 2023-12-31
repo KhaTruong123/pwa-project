@@ -6,76 +6,27 @@
     <title>TaskSheet Manager</title>
     <link rel="stylesheet" href="style.css"> <!-- Link to CSS file -->
     <link rel="manifest" href="manifest.json"> <!-- Link to manifest file -->
+
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <meta name="google-signin-client_id" content="YOUR_CLIENT_ID.apps.googleusercontent.com">
 </head>
+
 <body>
     <h1>TaskSheet Manager</h1>
-    <script src="main.js"></script>
+
+    <button id="loginButton" style="display: none;">Login by Google</button>
+
     <!-- Task input form -->
-    <form id="taskForm">
+    <form id="taskForm" style="display: none;">
         <input type="text" id="taskInput" placeholder="Enter a task" required />
-        <button type="button" onclick="addTask('Todo')">Todo</button>
-        <button type="button" onclick="addTask('Content')">Content</button>
+        <button type="button" id="todoButton">Todo</button>
+        <button type="button" id="contentButton">Content</button>
     </form>
 
-    <!-- Button to view tasks -->
-    <button type="button" onclick="viewTasks()">View Tasks</button>
+    <button id="viewTasksButton" style="display: none;">View Tasks</button>
+    <button id="logoutButton" style="display: none;">Logout</button>
 
-    <script>
-        // Function to add a task to the sheet
-        function addTask(taskType) {
-            const taskDescription = document.getElementById('taskInput').value;
-            if (taskDescription.trim() === '') {
-                alert('Please enter a task description.');
-                return;
-            }
+    <script src="main.js"></script>
 
-            // Send the task to the server
-            fetch('/add-task', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ taskDescription, taskType })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                document.getElementById('taskInput').value = ''; // Clear input field
-            })
-            .catch(error => {
-                console.error('Error adding task:', error);
-            });
-        }
-
-        // Function to view tasks
-        function viewTasks() {
-            // Check if the spreadsheetId is stored in the session/localStorage
-            const spreadsheetId = sessionStorage.getItem('spreadsheetId') || localStorage.getItem('spreadsheetId');
-            console.log("spreadsheet exist: ", spreadsheetId);
-            if (spreadsheetId) {
-            // If it exists, open the spreadsheet
-            window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
-        } else {
-            // If not, request the backend to create a new one
-            fetch('/view-tasks', {
-                method: 'POST',
-                // Additional headers and body if needed for session/user identification
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.spreadsheetId) {
-                    // Save the spreadsheet ID and open it
-                    sessionStorage.setItem('spreadsheetId', data.spreadsheetId);
-                    localStorage.setItem('spreadsheetId', data.spreadsheetId); // Persist across sessions
-                    window.open(`https://docs.google.com/spreadsheets/d/${data.spreadsheetId}`, '_blank');
-                }
-            })
-            .catch(error => {
-                console.error('Error creating/viewing spreadsheet:', error);
-            });
-        }
-}
-
-    </script>
 </body>
 </html>

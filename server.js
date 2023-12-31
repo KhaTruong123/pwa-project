@@ -2,14 +2,20 @@ const { google } = require('googleapis');
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session'); // for session management
+
+require('dotenv').config();
+
 const app = express();
 app.use(bodyParser.json()); // for parsing application/json
-app.use(session({ secret: 'your_secret_key', resave: false, saveUninitialized: true }));
+app.use(session({ 
+    secret: 'your_secret_key', 
+    resave: false, 
+    saveUninitialized: true }));
 
 // Configure OAuth2 client with your Google Cloud credentials
 const oauth2Client = new google.auth.OAuth2(
-    "776545214681-ca3klri27ekvet96a6h85ugde809ap06.apps.googleusercontent.com",
-    "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",
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
     "http://localhost:3000/oauthcallback"
 );
 
@@ -46,21 +52,19 @@ async function findOrCreateSpreadsheetWhenLogin(oAuth2Client, spreadsheetName) {
 
         const files = response.data.files;
         if (files.length > 0) {
-            // Return the first found spreadsheet's ID
             return files[0].id;
+        } else {
+            const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
+            const spreadsheet = await sheets.spreadsheets.create({
+                resource: { properties: { title: spreadsheetName } },
+                fields: 'spreadsheetId',
+            });
+            return spreadsheet.data.spreadsheetId;
         }
     } catch (error) {
         console.error("Error finding spreadsheet: ", error);
-        // Handle error appropriately
+        throw error;
     }
-
-    // No spreadsheet found, create a new one
-    const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
-    const spreadsheet = await sheets.spreadsheets.create({
-        resource: { properties: { title: spreadsheetName } },
-        fields: 'spreadsheetId',
-    });
-    return spreadsheet.data.spreadsheetId; // Return the new spreadsheet's ID
 }
 
 // checkAndCreateSpreadsheetIfNecessary
@@ -107,6 +111,10 @@ async function appendTaskToSpreadsheet(oAuth2Client, spreadsheetId, taskDescript
     });
 }
 
+// Check authentication
+app.get('/check-auth', (req, res) => {
+    res.json({ isAuthenticated: !!req.session.tokens });
+});
 
 // Route to start the OAuth flow
 app.get('/login', (req, res) => {
@@ -116,25 +124,30 @@ app.get('/login', (req, res) => {
 // Route to handle OAuth callback
 app.get('/oauthcallback', async (req, res) => {
     const { code } = req.query;
+
+    // Check if the authorization code is present
+    if (!code) {
+        return res.status(400).send('Invalid request: No code provided');
+    }
+
     try {
-        const { tokens } = await oauth2Client.getToken(code);
-        oauth2Client.setCredentials(tokens);
+        const { tokens } = await oauth2Client.getToken(code); // Exchange the authorization code for an access token
+        oauth2Client.setCredentials(tokens); // Set the credentials for future use
+        req.session.tokens = tokens;        // Store tokens in session
 
-        // Store tokens in session
-        req.session.tokens = tokens;
-
-        // Set credentials and find or create the spreadsheet
-        oauth2Client.setCredentials(req.session.tokens);
+        // Check for the existence of the "TaskSheet Manager" spreadsheet
+        // or create one if it does not exist, then store its ID in the session
         const spreadsheetId = await findOrCreateSpreadsheetWhenLogin(oauth2Client, "TaskSheet Manager");
         req.session.spreadsheetId = spreadsheetId; 
-        console.log('findOrCreateSpreadsheetWhenLogin: ', req.session.spreadsheetId, req.session.spreadsheetName)
+        console.log('OAuth callback: Spreadsheet ID -', spreadsheetId);
 
-        res.send('Authentication successful! You can close this tab.');
+        // Redirect the user to the home page or another relevant page
+        res.redirect('/');
     } catch (error) {
-        console.error('Error during OAuth callback', error);
-        res.status(500).send('Authentication failed! Please try again.');
+        console.error('Error during OAuth callback:', error);
+        res.redirect('/login'); // Redirect back to the login page
+        res.status(500).send('Authentication failed. Please try again.');
     }
-    
 });
 
 // Add-task API endpoint
@@ -153,7 +166,7 @@ app.post('/add-task', async (req, res) => {
         console.log ('current spreadhsheet: ', spreadsheetId)
         // Append the task to the spreadsheet
         await appendTaskToSpreadsheet(oauth2Client, spreadsheetId, req.body.taskDescription, req.body.taskType);
-        res.status(200).send('Task added successfully');
+        res.status(200).json({ message: 'Task added successfully' });
     } catch (error) {
         console.error('Error adding task:', error);
         res.status(500).send('Error adding task to the sheet');
@@ -166,8 +179,26 @@ app.get('/view-tasks', (req, res) => {
         return res.status(404).json({message:'No tasks created yet.'});
     }
     const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${req.session.spreadsheetId}`;
+    console.log ("spreadsheetUrl: ",spreadsheetUrl);
     // Respond with JSON containing the URL
     res.json({ url: spreadsheetUrl });
+});
+
+// Route to log out
+app.post('/logout', (req, res) => {
+    if (req.session) {
+        req.session.destroy(err => {
+            if (err) {
+                console.error('Error destroying session:', err);
+                res.status(500).send('Error logging out');
+            } else {
+                res.clearCookie('connect.sid'); // Clear the session cookie
+                res.redirect('/'); // Redirect to home page after logout
+            }
+        });
+    } else {
+        res.redirect('/'); // Redirect to home page if no session found
+    }
 });
 
 // Start the server
